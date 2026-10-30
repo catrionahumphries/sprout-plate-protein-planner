@@ -14,7 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ingredients: {
+        Row: {
+          afcd_food_id: string | null
+          calories_per_100g: number
+          carbs_per_100g: number
+          cooked_conversion_factor: number
+          created_at: string
+          density_g_per_cup: number
+          fat_per_100g: number
+          fibre_per_100g: number
+          id: string
+          ingredient_name: string
+          protein_per_100g: number
+        }
+        Insert: {
+          afcd_food_id?: string | null
+          calories_per_100g?: number
+          carbs_per_100g?: number
+          cooked_conversion_factor?: number
+          created_at?: string
+          density_g_per_cup?: number
+          fat_per_100g?: number
+          fibre_per_100g?: number
+          id?: string
+          ingredient_name: string
+          protein_per_100g?: number
+        }
+        Update: {
+          afcd_food_id?: string | null
+          calories_per_100g?: number
+          carbs_per_100g?: number
+          cooked_conversion_factor?: number
+          created_at?: string
+          density_g_per_cup?: number
+          fat_per_100g?: number
+          fibre_per_100g?: number
+          id?: string
+          ingredient_name?: string
+          protein_per_100g?: number
+        }
+        Relationships: []
+      }
+      recipes: {
+        Row: {
+          compliance_status: string | null
+          created_at: string
+          id: string
+          ingredients: Json
+          meal_type: string | null
+          method: string | null
+          nutrition: Json | null
+          servings: number
+          theme_nights: string[]
+          title: string
+          total_time_mins: number | null
+        }
+        Insert: {
+          compliance_status?: string | null
+          created_at?: string
+          id?: string
+          ingredients?: Json
+          meal_type?: string | null
+          method?: string | null
+          nutrition?: Json | null
+          servings?: number
+          theme_nights?: string[]
+          title: string
+          total_time_mins?: number | null
+        }
+        Update: {
+          compliance_status?: string | null
+          created_at?: string
+          id?: string
+          ingredients?: Json
+          meal_type?: string | null
+          method?: string | null
+          nutrition?: Json | null
+          servings?: number
+          theme_nights?: string[]
+          title?: string
+          total_time_mins?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
