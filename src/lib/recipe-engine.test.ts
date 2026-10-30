@@ -35,3 +35,20 @@ describe("compliance", () => {
     expect(a.serving.grams).toBe(300);
   });
 });
+
+import { parseIngredientLine, fuzzyMatch } from "./recipe-engine";
+describe("line parsing & matching", () => {
+  it("parses grams, uncooked and note", () => {
+    const p = parseIngredientLine("185 g uncooked quinoa, rinsed");
+    expect([p.quantity, p.unit, p.name, p.cooked]).toEqual([185, "g", "quinoa, rinsed", false]);
+  });
+  it("parses fractions and cups and cooked", () => {
+    const p = parseIngredientLine("1 1/2 cups cooked white rice");
+    expect([p.quantity, p.unit, p.name, p.cooked]).toEqual([1.5, "cup", "white rice", true]);
+  });
+  it("fuzzy matches minor wording", () => {
+    expect(fuzzyMatch(db, "quinoa, rinsed")?.ingredient_name).toBe("quinoa");
+    expect(fuzzyMatch(db, "tofu, firm")?.ingredient_name).toBe("firm tofu");
+    expect(fuzzyMatch(db, "chickpeas")).toBeNull();
+  });
+});
