@@ -20,7 +20,7 @@ export type IngredientLine = {
   quantity: number;
   unit: Unit;
   name: string; // may include a note after a comma, e.g. "quinoa, rinsed"
-  cooked?: boolean; // quantity is measured cooked
+  cooked?: boolean | undefined; // quantity is measured cooked
 };
 
 export type RecipeInput = {
@@ -216,7 +216,7 @@ export function servingSize(lines: LineAnalysis[], servings: number) {
 }
 
 export type Status = "pass" | "warn" | "fail";
-export type Check = { label: string; value: string; target: string; status: Status; note?: string };
+export type Check = { label: string; value: string; target: string; status: Status; note?: string | undefined };
 
 export function proteinSources(lines: LineAnalysis[]) {
   return lines.filter((l) => l.ing && l.perServing.protein >= TARGETS.proteinSourceMinG);
@@ -255,7 +255,7 @@ export function compliance(r: RecipeInput, lines: LineAnalysis[], n: Nutrition, 
   return { checks, overall };
 }
 
-export type Fix = { kind: "scale" | "swap" | "add" | "side"; title: string; detail: string; projectedProtein?: number; projectedServingG?: number };
+export type Fix = { kind: "scale" | "swap" | "add" | "side"; title: string; detail: string; projectedProtein?: number | undefined; projectedServingG?: number | undefined };
 
 const SWAPS: Record<string, string[]> = {
   "white rice": ["quinoa", "red lentils"],
