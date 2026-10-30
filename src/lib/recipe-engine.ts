@@ -108,7 +108,7 @@ export function formatLine(line: IngredientLine, ing?: Ingredient): string {
     case "g": return `${f1(q)} g (${f1(q / G_PER_OZ)} oz) ${label}`;
     case "kg": return `${f1(q)} kg (${f1((q * 1000) / G_PER_LB)} lb) ${label}`;
     case "oz": return `${f1(q * G_PER_OZ)} g (${f1(q)} oz) ${label}`;
-    case "lb": return `${f1(q * G_PER_LB / 1000 >= 1 ? q * G_PER_LB / 1000 : q * G_PER_LB)} ${q * G_PER_LB >= 1000 ? "kg" : "g"} (${f1(q)} lb) ${label}`;
+    case "lb": return `${f1(q * G_PER_LB)} g (${f1(q)} lb) ${label}`;
     case "ml": return `${f1(q)} ml (${f1(q / ML_PER_FLOZ)} fl oz) ${label}`;
     case "l": return `${f1(q)} l (${f1((q * 1000) / ML_PER_FLOZ)} fl oz) ${label}`;
     case "fl oz": return `${f1(q * ML_PER_FLOZ)} ml (${f1(q)} fl oz) ${label}`;
@@ -384,7 +384,7 @@ export function analyseRecipe(r: RecipeInput, db: Ingredient[]) {
   const time = checkTime(r, db);
   const comp = compliance(r, lines, nutrition, serving.grams);
   const fixes = comp.overall === "pass" ? [] : fixSuggestions(r, db, lines, nutrition, serving.grams);
-  const formattedIngredients = lines.map((l) => formatLine(l.line, l.ing) + (noteOf(l.line.name) ? "" : ""));
+  const formattedIngredients = lines.map((l) => formatLine(l.line, l.ing));
   const formattedMethod = formatMethod(r.method);
   const suggestion = suggestCategory(r);
   return { lines: lines.map((l) => ({ name: l.line.name, raw: l.raw, cooked: l.cooked, protein: l.perServing.protein, known: !!l.ing })), unknown, nutrition, serving, time, compliance: comp, fixes, formattedIngredients, formattedMethod, suggestion };
