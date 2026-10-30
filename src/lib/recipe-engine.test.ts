@@ -24,7 +24,7 @@ describe("compliance", () => {
   });
   it("protein target is 30 g", () => {
     const c = compliance({ title: "", servings: 1, total_time_mins: 0, ingredients: [], method: "" }, [], { protein: 29.9, calories: 500, fibre: 8, carbs: 60, fat: 15 }, 400);
-    expect(c.checks[0].status).toBe("fail");
+    expect(c.checks[0]?.status).toBe("fail");
   });
   it("more than 10 ingredients fails", () => {
     const a = analyseRecipe({ title: "x", servings: 1, total_time_mins: 30, ingredients: Array.from({ length: 11 }, () => ({ quantity: 10, unit: "g" as const, name: "tempeh" })), method: "" }, db);

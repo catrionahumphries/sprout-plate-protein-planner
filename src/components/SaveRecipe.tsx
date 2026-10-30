@@ -34,7 +34,7 @@ export function SaveRecipe({ recipe, a }: { recipe: RecipeInput; a: Analysis }) 
       .select("id")
       .single();
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Saved to library");
     nav({ to: "/library/$id", params: { id: data.id } });
   }

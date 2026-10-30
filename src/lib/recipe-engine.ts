@@ -58,7 +58,7 @@ const G_PER_LB = 453.592;
 const ML_PER_FLOZ = 29.5735;
 
 export function baseName(name: string) {
-  return name.split(",")[0].trim().toLowerCase();
+  return (name.split(",")[0] ?? "").trim().toLowerCase();
 }
 export function noteOf(name: string) {
   const i = name.indexOf(",");
@@ -176,7 +176,7 @@ export type Nutrition = { calories: number; protein: number; fibre: number; carb
 
 export type LineAnalysis = {
   line: IngredientLine;
-  ing?: Ingredient;
+  ing?: Ingredient | undefined;
   raw: number;
   cooked: number;
   cookedCups: number;

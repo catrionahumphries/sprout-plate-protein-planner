@@ -29,7 +29,7 @@ export function AddIngredientDialog({ name, open, onOpenChange }: { name: string
     const num = (k: string) => Number(vals[k] || 0);
     const { error } = await supabase.from("ingredients").insert({
       ingredient_name: name.trim().toLowerCase(),
-      afcd_food_id: vals.afcd_food_id || null,
+      afcd_food_id: vals["afcd_food_id"] || null,
       calories_per_100g: num("calories_per_100g"),
       protein_per_100g: num("protein_per_100g"),
       fibre_per_100g: num("fibre_per_100g"),
@@ -39,7 +39,7 @@ export function AddIngredientDialog({ name, open, onOpenChange }: { name: string
       density_g_per_cup: num("density_g_per_cup") || 240,
     });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(`Added “${name}” to the ingredient database`);
     await qc.invalidateQueries({ queryKey: ingredientsKey });
     onOpenChange(false);
