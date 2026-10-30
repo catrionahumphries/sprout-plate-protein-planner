@@ -19,8 +19,9 @@ const FIELDS = [
   ["density_g_per_cup", "Grams per cup", "number"],
 ] as const;
 
-export function AddIngredientDialog({ name, open, onOpenChange }: { name: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+export function AddIngredientDialog({ name, open, onOpenChange, onAdded }: { name: string; open: boolean; onOpenChange: (o: boolean) => void; onAdded?: (name: string) => void }) {
   const qc = useQueryClient();
+  const [ingName, setIngName] = useState(name.trim().toLowerCase());
   const [vals, setVals] = useState<Record<string, string>>({ cooked_conversion_factor: "1", density_g_per_cup: "240" });
   const [busy, setBusy] = useState(false);
 
@@ -28,7 +29,7 @@ export function AddIngredientDialog({ name, open, onOpenChange }: { name: string
     setBusy(true);
     const num = (k: string) => Number(vals[k] || 0);
     const { error } = await supabase.from("ingredients").insert({
-      ingredient_name: name.trim().toLowerCase(),
+      ingredient_name: ingName.trim().toLowerCase(),
       afcd_food_id: vals["afcd_food_id"] || null,
       calories_per_100g: num("calories_per_100g"),
       protein_per_100g: num("protein_per_100g"),
@@ -40,8 +41,9 @@ export function AddIngredientDialog({ name, open, onOpenChange }: { name: string
     });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(`Added “${name}” to the ingredient database`);
+    toast.success(`Added “${ingName}” to the ingredient database`);
     await qc.invalidateQueries({ queryKey: ingredientsKey });
+    onAdded?.(ingName.trim().toLowerCase());
     onOpenChange(false);
   }
 
@@ -53,6 +55,10 @@ export function AddIngredientDialog({ name, open, onOpenChange }: { name: string
           <DialogDescription>Enter raw values per 100 g. Conversion factor = cooked weight ÷ raw weight (rice ≈ 3, spinach ≈ 0.1).</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2 space-y-1">
+            <Label htmlFor="ing_name">Ingredient name</Label>
+            <Input id="ing_name" value={ingName} onChange={(e) => setIngName(e.target.value)} />
+          </div>
           {FIELDS.map(([k, label, type]) => (
             <div key={k} className={k === "afcd_food_id" ? "col-span-2 space-y-1" : "space-y-1"}>
               <Label htmlFor={k}>{label}</Label>
@@ -61,7 +67,7 @@ export function AddIngredientDialog({ name, open, onOpenChange }: { name: string
           ))}
         </div>
         <DialogFooter>
-          <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Add ingredient"}</Button>
+          <Button onClick={save} disabled={busy || !ingName.trim()}>{busy ? "Saving…" : "Add ingredient"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
