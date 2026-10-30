@@ -464,7 +464,9 @@ function lev(a: string, b: string) {
 
 /** Similarity 0..1 between a typed name and a database ingredient name. */
 export function matchScore(typed: string, dbName: string): number {
-  const a = tokens(baseName(typed)), b = tokens(dbName);
+  return Math.max(scoreTokens(tokens(baseName(typed)), tokens(dbName)), scoreTokens(tokens(typed), tokens(dbName)));
+}
+function scoreTokens(a: string[], b: string[]): number {
   if (!a.length || !b.length) return 0;
   if (a.join(" ") === b.join(" ")) return 1;
   let hit = 0;
