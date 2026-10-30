@@ -124,13 +124,9 @@ export function formatLine(line: IngredientLine, ing?: Ingredient): string {
 
 /** Convert °C/°F temps and metric g/ml in free text to "metric (imperial)". */
 export function formatMethod(method: string): string {
-  let out = method.replace(/(\d+(?:\.\d+)?)\s*°\s*C\b|(\d+(?:\.\d+)?)\s*(?:degrees\s*C(?:elsius)?)\b/gi, (_m, a, b) => {
-    const c = parseFloat(a ?? b);
-    return `${f1(c)}°C (${f1(c * 9 / 5 + 32)}°F)`;
-  });
-  out = out.replace(/(\d+(?:\.\d+)?)\s*°\s*F\b/g, (_m, a) => {
-    const f = parseFloat(a);
-    return `${f1((f - 32) * 5 / 9)}°C (${f1(f)}°F)`;
+  let out = method.replace(/(\d+(?:\.\d+)?)\s*(?:°\s*|degrees\s*)([CF])\b(?:elsius|ahrenheit)?(?!\s*\()/gi, (_m, a, u) => {
+    const v = parseFloat(a);
+    return u.toUpperCase() === "C" ? `${f1(v)}°C (${f1(v * 9 / 5 + 32)}°F)` : `${f1((v - 32) * 5 / 9)}°C (${f1(v)}°F)`;
   });
   out = out.replace(/(\d+(?:\.\d+)?)\s*(g|ml)\b(?!\s*\()/g, (_m, a, u) => {
     const n = parseFloat(a);
