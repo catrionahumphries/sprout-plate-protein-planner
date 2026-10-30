@@ -1,19 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Trash2, Sparkles, AlertTriangle } from "lucide-react";
+import { Plus, Sparkles, AlertTriangle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { IngredientAutocomplete } from "@/components/IngredientAutocomplete";
 import { AddIngredientDialog } from "@/components/AddIngredientDialog";
 import { Results } from "@/components/Results";
 import { SaveRecipe } from "@/components/SaveRecipe";
 import { fetchIngredients, ingredientsKey } from "@/lib/db";
-import { analyseRecipe, baseName, findIngredient, UNITS, type Analysis, type IngredientLine, type RecipeInput, type Unit } from "@/lib/recipe-engine";
+import { analyseRecipe, baseName, fuzzyMatch, noteOf, parseIngredientLine, type Analysis, type IngredientLine, type ParsedLine, type RecipeInput } from "@/lib/recipe-engine";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,30 +27,49 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Row = { quantity: string; unit: Unit; name: string; cooked: boolean };
-const blank = (): Row => ({ quantity: "", unit: "g", name: "", cooked: false });
+type Match = { parsed: ParsedLine; match: string | null; auto: boolean };
 
 function Index() {
   const { data: db = [] } = useQuery({ queryKey: ingredientsKey, queryFn: fetchIngredients });
   const [title, setTitle] = useState("");
   const [servings, setServings] = useState("2");
   const [time, setTime] = useState("");
-  const [rows, setRows] = useState<Row[]>([blank(), blank(), blank()]);
+  const [ingText, setIngText] = useState("");
   const [method, setMethod] = useState("");
-  const [adding, setAdding] = useState<string | null>(null);
+  const [adding, setAdding] = useState<{ name: string; index: number } | null>(null);
+  const [matches, setMatches] = useState<Match[] | null>(null);
   const [result, setResult] = useState<{ recipe: RecipeInput; a: Analysis } | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const matchRef = useRef<HTMLDivElement>(null);
 
-  const update = (i: number, patch: Partial<Row>) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-  const filled = rows.filter((r) => r.name.trim());
-  const missing = [...new Set(filled.filter((r) => !findIngredient(db, r.name)).map((r) => baseName(r.name)))];
+  const lines = ingText.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const allMatched = !!matches && matches.every((m) => m.match);
 
   function analyse() {
+    const ms = lines.map((l) => {
+      const parsed = parseIngredientLine(l);
+      const m = fuzzyMatch(db, parsed.name);
+      return { parsed, match: m?.ingredient_name ?? null, auto: true };
+    });
+    setMatches(ms);
+    setResult(null);
+    setTimeout(() => matchRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  }
+
+  function setMatch(i: number, name: string) {
+    setMatches((ms) => ms && ms.map((m, j) => (j === i ? { ...m, match: name, auto: false } : m)));
+  }
+
+  function calculate() {
+    if (!matches || !allMatched) return;
     const recipe: RecipeInput = {
       title: title.trim() || "Untitled recipe",
       servings: Number(servings) || 1,
       total_time_mins: Number(time) || 0,
-      ingredients: filled.map<IngredientLine>((r) => ({ quantity: Number(r.quantity) || 0, unit: r.unit, name: r.name.trim(), cooked: r.cooked })),
+      ingredients: matches.map<IngredientLine>(({ parsed, match }) => {
+        const note = noteOf(parsed.name);
+        return { quantity: parsed.quantity, unit: parsed.unit, name: note ? `${match}, ${note}` : match!, cooked: parsed.cooked };
+      }),
       method,
     };
     setResult({ recipe, a: analyseRecipe(recipe, db) });
@@ -74,36 +91,9 @@ function Index() {
           <div className="space-y-1.5"><Label htmlFor="time">Total time (mins)</Label><Input id="time" type="number" min={0} value={time} onChange={(e) => setTime(e.target.value)} /></div>
         </div>
 
-        <div>
-          <Label>Ingredients</Label>
-          <div className="mt-2 space-y-2">
-            {rows.map((r, i) => {
-              const unknown = r.name.trim() && db.length > 0 && !findIngredient(db, r.name);
-              return (
-                <div key={i} className="grid grid-cols-[80px_100px_1fr_auto] items-center gap-2 sm:grid-cols-[90px_110px_1fr_auto_auto]">
-                  <Input type="number" step="any" placeholder="Qty" value={r.quantity} onChange={(e) => update(i, { quantity: e.target.value })} />
-                  <Select value={r.unit} onValueChange={(v) => update(i, { unit: v as Unit })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <IngredientAutocomplete value={r.name} onChange={(v) => update(i, { name: v })} db={db} invalid={!!unknown} />
-                  <Button variant="ghost" size="icon" aria-label="Remove ingredient" onClick={() => setRows((x) => x.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
-                  <label className="col-span-4 flex items-center gap-2 text-xs text-muted-foreground sm:col-span-1">
-                    <Checkbox checked={r.cooked} onCheckedChange={(c) => update(i, { cooked: !!c })} /> cooked
-                  </label>
-                </div>
-              );
-            })}
-          </div>
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => setRows((r) => [...r, blank()])}><Plus className="h-4 w-4" /> Add ingredient</Button>
-          {missing.length > 0 && (
-            <div className="mt-3 rounded-lg bg-warning/20 p-3 text-sm">
-              <div className="flex items-center gap-2 font-medium"><AlertTriangle className="h-4 w-4" /> Not in the ingredient database:</div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {missing.map((m) => <Button key={m} size="sm" variant="secondary" onClick={() => setAdding(m)}><Plus className="h-3 w-3" /> Add “{m}”</Button>)}
-              </div>
-            </div>
-          )}
+        <div className="space-y-1.5">
+          <Label htmlFor="ings">Ingredients</Label>
+          <Textarea id="ings" rows={8} value={ingText} onChange={(e) => { setIngText(e.target.value); setMatches(null); setResult(null); }} placeholder={"One ingredient per line...\n185 g uncooked quinoa, rinsed\n200 g tempeh, cubed\n2 cups baby spinach"} />
         </div>
 
         <div className="space-y-1.5">
@@ -111,10 +101,42 @@ function Index() {
           <Textarea id="method" rows={6} value={method} onChange={(e) => setMethod(e.target.value)} placeholder={"Rinse and simmer quinoa for 15 mins.\nPan-fry tempeh until golden.\nToss with spinach and serve."} />
         </div>
 
-        <Button size="lg" className="w-full sm:w-auto" onClick={analyse} disabled={filled.length === 0}>
+        <Button size="lg" className="w-full sm:w-auto" onClick={analyse} disabled={lines.length === 0}>
           <Sparkles className="h-4 w-4" /> Analyse Recipe
         </Button>
       </div>
+
+      {matches && (
+        <div ref={matchRef} className="mt-10 rounded-2xl border bg-card p-5 shadow-soft sm:p-8">
+          <h2 className="text-2xl font-bold">Ingredient Match</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Check what each line matched to. Fix any mismatches before calculating nutrition.</p>
+          <div className="mt-4 divide-y">
+            {matches.map((m, i) => (
+              <div key={i} className="grid items-center gap-2 py-3 sm:grid-cols-[1fr_260px]">
+                <div>
+                  <div className="font-medium">{m.parsed.raw}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Read as: {m.parsed.quantity || "?"} {m.parsed.unit}{m.parsed.cooked ? " (cooked)" : ""} · “{m.parsed.name}”
+                  </div>
+                  {!m.match && (
+                    <div className="mt-1 flex items-center gap-2 text-sm text-destructive">
+                      <AlertTriangle className="h-4 w-4" /> No match found
+                      <Button size="sm" variant="secondary" onClick={() => setAdding({ name: baseName(m.parsed.name), index: i })}><Plus className="h-3 w-3" /> Add to database</Button>
+                    </div>
+                  )}
+                </div>
+                <Select value={m.match ?? ""} onValueChange={(v) => setMatch(i, v)}>
+                  <SelectTrigger className={m.match ? "" : "border-destructive"}><SelectValue placeholder="Pick an ingredient…" /></SelectTrigger>
+                  <SelectContent>{db.map((d) => <SelectItem key={d.ingredient_name} value={d.ingredient_name}><span className="capitalize">{d.ingredient_name}</span></SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+          <Button size="lg" className="mt-4 w-full sm:w-auto" onClick={calculate} disabled={!allMatched}>
+            <Check className="h-4 w-4" /> {allMatched ? "Confirm & calculate nutrition" : "Match all ingredients to continue"}
+          </Button>
+        </div>
+      )}
 
       <div ref={resultsRef} className="mt-10 space-y-5">
         {result && (
@@ -125,7 +147,7 @@ function Index() {
         )}
       </div>
 
-      {adding && <AddIngredientDialog name={adding} open onOpenChange={(o) => !o && setAdding(null)} />}
+      {adding && <AddIngredientDialog name={adding.name} open onOpenChange={(o) => !o && setAdding(null)} onAdded={(n) => setMatch(adding.index, n)} />}
     </div>
   );
 }

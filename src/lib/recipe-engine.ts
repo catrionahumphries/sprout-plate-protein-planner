@@ -398,3 +398,91 @@ export function recipeToText(r: RecipeInput, a: Pick<Analysis, "formattedIngredi
     a.formattedMethod,
   ].join("\n");
 }
+
+// ---------- Free-text ingredient parsing & fuzzy matching ----------
+
+const UNIT_ALIASES: Record<string, Unit> = {
+  g: "g", gm: "g", gms: "g", gram: "g", grams: "g", gr: "g",
+  kg: "kg", kgs: "kg", kilo: "kg", kilos: "kg", kilogram: "kg", kilograms: "kg",
+  ml: "ml", millilitre: "ml", millilitres: "ml", milliliter: "ml", milliliters: "ml",
+  l: "l", litre: "l", litres: "l", liter: "l", liters: "l",
+  cup: "cup", cups: "cup", c: "cup",
+  tbsp: "tbsp", tbs: "tbsp", tbl: "tbsp", tablespoon: "tbsp", tablespoons: "tbsp", T: "tbsp",
+  tsp: "tsp", teaspoon: "tsp", teaspoons: "tsp", t: "tsp",
+  oz: "oz", ounce: "oz", ounces: "oz",
+  lb: "lb", lbs: "lb", pound: "lb", pounds: "lb",
+  "fl oz": "fl oz", floz: "fl oz",
+};
+const FRACTIONS: Record<string, number> = { "½": 0.5, "⅓": 1 / 3, "⅔": 2 / 3, "¼": 0.25, "¾": 0.75, "⅛": 0.125 };
+
+export type ParsedLine = IngredientLine & { raw: string };
+
+function parseQty(s: string): number {
+  let t = s.trim();
+  let total = 0;
+  for (const [f, v] of Object.entries(FRACTIONS)) if (t.includes(f)) { total += v; t = t.replace(f, "").trim(); }
+  if (!t) return total;
+  if (/^\d+\s+\d+\/\d+$/.test(t)) { const [w, fr] = t.split(/\s+/); const [a, b] = fr!.split("/"); return total + Number(w) + Number(a) / Number(b); }
+  if (/^\d+\/\d+$/.test(t)) { const [a, b] = t.split("/"); return total + Number(a) / Number(b); }
+  if (/^\d+(?:\.\d+)?\s*-\s*\d+(?:\.\d+)?$/.test(t)) { const [a, b] = t.split("-"); return total + (Number(a) + Number(b)) / 2; }
+  return total + (Number(t) || 0);
+}
+
+/** Parse "185 g uncooked quinoa, rinsed" → {quantity:185, unit:"g", name:"quinoa, rinsed"}. */
+export function parseIngredientLine(raw: string): ParsedLine {
+  let s = raw.trim().replace(/^[-*•]\s*/, "");
+  const qm = s.match(/^((?:\d+\s+\d+\/\d+)|(?:\d+\/\d+)|(?:\d+(?:\.\d+)?\s*-\s*\d+(?:\.\d+)?)|(?:\d*(?:\.\d+)?\s*[½⅓⅔¼¾⅛])|(?:\d+(?:\.\d+)?))\s*/);
+  let quantity = 0;
+  if (qm && qm[1]!.trim()) { quantity = parseQty(qm[1]!); s = s.slice(qm[0].length); }
+  let unit: Unit = "g";
+  const um = s.match(/^(fl\.?\s?oz|[A-Za-z]+)\.?(?=\s|$)\s*/);
+  let hasUnit = false;
+  if (um) {
+    const key = um[1]!.replace(/\.|\s/g, "").toLowerCase() === "floz" ? "fl oz" : (um[1] === "T" || um[1] === "t" ? um[1] : um[1]!.toLowerCase());
+    const u = UNIT_ALIASES[key];
+    if (u) { unit = u; hasUnit = true; s = s.slice(um[0].length); }
+  }
+  if (!hasUnit && quantity) unit = "g";
+  s = s.replace(/^of\s+/i, "");
+  let cooked = false;
+  if (/\b(uncooked|raw|dry|dried)\b/i.test(s.split(",")[0]!)) s = s.replace(/\b(uncooked|raw)\b\s*/i, "");
+  else if (/\bcooked\b/i.test(s.split(",")[0]!)) { cooked = true; s = s.replace(/\bcooked\b\s*/i, ""); }
+  return { raw, quantity, unit, name: s.trim().replace(/\s+/g, " "), cooked };
+}
+
+const STOP = new Set(["of", "the", "a", "an", "fresh", "chopped", "diced", "sliced", "minced", "rinsed", "drained", "uncooked", "cooked", "raw", "large", "small", "medium", "organic", "and"]);
+const tokens = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w && !STOP.has(w)).map((w) => w.replace(/(es|s)$/, ""));
+
+function lev(a: string, b: string) {
+  const d = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = d[0]!; d[0] = i;
+    for (let j = 1; j <= b.length; j++) { const t = d[j]!; d[j] = Math.min(d[j]! + 1, d[j - 1]! + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; }
+  }
+  return d[b.length]!;
+}
+
+/** Similarity 0..1 between a typed name and a database ingredient name. */
+export function matchScore(typed: string, dbName: string): number {
+  return Math.max(scoreTokens(tokens(baseName(typed)), tokens(dbName)), scoreTokens(tokens(typed), tokens(dbName)));
+}
+function scoreTokens(a: string[], b: string[]): number {
+  if (!a.length || !b.length) return 0;
+  if (a.join(" ") === b.join(" ")) return 1;
+  let hit = 0;
+  for (const w of b) {
+    const best = Math.max(...a.map((x) => (x === w ? 1 : Math.max(x.length, w.length) >= 4 && lev(x, w) <= 1 ? 0.85 : 0)));
+    hit += best;
+  }
+  const extra = a.filter((x) => !b.some((w) => x === w || lev(x, w) <= 1)).length;
+  return (hit / b.length) * (1 / (1 + extra * 0.25));
+}
+
+/** Best database match for a typed name, or null if nothing is close enough. */
+export function fuzzyMatch(db: Ingredient[], typed: string, threshold = 0.6): Ingredient | null {
+  const exact = findIngredient(db, typed);
+  if (exact) return exact;
+  let best: Ingredient | null = null, bestS = 0;
+  for (const i of db) { const s = matchScore(typed, i.ingredient_name); if (s > bestS) { bestS = s; best = i; } }
+  return bestS >= threshold ? best : null;
+}
