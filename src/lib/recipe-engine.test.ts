@@ -52,3 +52,33 @@ describe("line parsing & matching", () => {
     expect(fuzzyMatch(db, "chickpeas")).toBeNull();
   });
 });
+
+import { suggestCategory, THEME_NIGHTS } from "./recipe-engine";
+describe("theme night suggestions", () => {
+  const s = (title: string, mins = 30) => suggestCategory({ title, servings: 2, total_time_mins: mins, ingredients: [], method: "" });
+  it("only ever suggests real theme nights", () => {
+    for (const t of ["Spaghetti bolognese", "Ramen", "Dal", "Tofu toastie", "Chickpea katsu", "Porridge", "Pumpkin soup", "Veg stir-fry", "Quinoa bowl", "Taco night", "Paneer bake", "Garden salad"]) {
+      for (const th of s(t).theme_nights) expect(THEME_NIGHTS).toContain(th);
+    }
+  });
+  it("under 15 mins is Quick & Easy, 30 mins is not", () => {
+    expect(s("Quinoa bowl", 12).theme_nights).toContain("Quick & Easy (under 15mins)");
+    expect(s("Quinoa bowl", 30).theme_nights).not.toContain("Quick & Easy (under 15mins)");
+    expect(s("Quinoa bowl", 0).theme_nights).not.toContain("Quick & Easy (under 15mins)");
+  });
+  it("noodles go to Noodle knockout, pasta to Pasta power hour", () => {
+    expect(s("Ramen").theme_nights).toContain("Noodle knockout");
+    expect(s("Ramen").theme_nights).not.toContain("Pasta power hour");
+    expect(s("Spaghetti bolognese").theme_nights).toContain("Pasta power hour");
+    expect(s("Spaghetti bolognese").theme_nights).not.toContain("Noodle knockout");
+  });
+  it("one theme night per style", () => {
+    expect(s("Red lentil dal").theme_nights).toContain("Cosy curry & stew night");
+    expect(s("Tofu toastie").theme_nights).toContain("Sandwich stack attack");
+    expect(s("Chickpea katsu").theme_nights).toContain("Fake-away");
+    expect(s("Porridge").theme_nights).toContain("Breakfast for dinner");
+    expect(s("Pumpkin soup").theme_nights).toContain("Soup-er simple supper night");
+    expect(s("Veg stir-fry").theme_nights).toContain("Stir-Fry & Sizzle Session");
+    expect(s("Quinoa bowl").theme_nights).toContain("Build a bowl night");
+  });
+});
