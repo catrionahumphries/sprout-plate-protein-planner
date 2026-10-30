@@ -44,7 +44,7 @@ export const TARGETS = {
 };
 
 export const MEAL_TYPES = ["Bowl", "Curry & Stew", "Stir-fry", "Pasta & Noodles", "Salad", "Soup", "Bake", "Wrap & Taco", "Breakfast"];
-export const THEME_NIGHTS = ["Meatless Monday", "Taco Tuesday", "Curry Night", "Stir-fry Night", "Pasta Night", "Soup Night", "Bowl Night", "Fakeaway Friday", "Sunday Bake"];
+export const THEME_NIGHTS = ["Breakfast for dinner", "Build a bowl night", "Cosy curry & stew night", "Noodle knockout", "Pasta power hour", "Sandwich stack attack", "Soup-er simple supper night", "Stir-Fry & Sizzle Session", "Quick & Easy (under 15mins)", "Fake-away"];
 
 export const r1 = (n: number) => Math.round(n * 10) / 10;
 export const f1 = (n: number) => {
@@ -349,25 +349,29 @@ export function fixSuggestions(r: RecipeInput, db: Ingredient[], lines: LineAnal
 
 export function suggestCategory(r: RecipeInput): { meal_type: string; theme_nights: string[] } {
   const t = `${r.title} ${r.method} ${r.ingredients.map((i) => i.name).join(" ")}`.toLowerCase();
+  const isNoodle = /noodle|ramen|udon|soba|\bpho\b|vermicelli|lo mein|chow mein/.test(t);
+  const isPasta = /pasta|spaghetti|penne|fusilli|lasagn|macaroni|tagliatelle|farfalle|gnocchi/.test(t);
   let meal_type = "Bowl";
   if (/curry|dal|dhal|stew|masala|korma/.test(t)) meal_type = "Curry & Stew";
-  else if (/stir.?fry|wok|noodle/.test(t)) meal_type = /noodle/.test(t) ? "Pasta & Noodles" : "Stir-fry";
-  else if (/pasta|spaghetti|penne|lasagn/.test(t)) meal_type = "Pasta & Noodles";
+  else if (/stir.?fry|wok|noodle|ramen|udon|soba|\bpho\b/.test(t)) meal_type = isNoodle ? "Pasta & Noodles" : "Stir-fry";
+  else if (isPasta) meal_type = "Pasta & Noodles";
   else if (/soup|broth/.test(t)) meal_type = "Soup";
   else if (/taco|wrap|burrito|tortilla/.test(t)) meal_type = "Wrap & Taco";
   else if (/bake|roast|casserole/.test(t)) meal_type = "Bake";
   else if (/salad/.test(t)) meal_type = "Salad";
   else if (/oats|porridge|yoghurt bowl/.test(t)) meal_type = "Breakfast";
-  const themes = new Set<string>(["Meatless Monday"]);
-  if (/taco|burrito|black beans|mexican|salsa/.test(t)) themes.add("Taco Tuesday");
-  if (meal_type === "Curry & Stew") themes.add("Curry Night");
-  if (meal_type === "Stir-fry" || /stir.?fry/.test(t)) themes.add("Stir-fry Night");
-  if (meal_type === "Pasta & Noodles") themes.add("Pasta Night");
-  if (meal_type === "Soup") themes.add("Soup Night");
-  if (meal_type === "Bowl" || /bowl/.test(t)) themes.add("Bowl Night");
-  if (/fakeaway|burger|satay|teriyaki|katsu|kebab/.test(t)) themes.add("Fakeaway Friday");
-  if (meal_type === "Bake") themes.add("Sunday Bake");
-  return { meal_type, theme_nights: [...themes] };
+  const themes = new Set<string>();
+  if (meal_type === "Breakfast" || /porridge|oats|yoghurt|yogurt|tofu scramble|pancake|breakfast/.test(t)) themes.add("Breakfast for dinner");
+  if (meal_type === "Bowl" || /bowl/.test(t)) themes.add("Build a bowl night");
+  if (meal_type === "Curry & Stew") themes.add("Cosy curry & stew night");
+  if (isNoodle) themes.add("Noodle knockout");
+  if (isPasta) themes.add("Pasta power hour");
+  if (meal_type === "Wrap & Taco" || /sandwich|toastie|bagel|panini|quesadilla|\bsub\b|\broll\b|filler/.test(t)) themes.add("Sandwich stack attack");
+  if (meal_type === "Soup") themes.add("Soup-er simple supper night");
+  if (meal_type === "Stir-fry" || /stir.?fry|wok/.test(t)) themes.add("Stir-Fry & Sizzle Session");
+  if (r.total_time_mins > 0 && r.total_time_mins <= 15) themes.add("Quick & Easy (under 15mins)");
+  if (/fake.?away|burger|satay|teriyaki|katsu|kebab|schnitzel|nugget|fish finger|pizza|mac ?& ?cheese|fish and chip|spring roll|dim sum/.test(t)) themes.add("Fake-away");
+  return { meal_type, theme_nights: THEME_NIGHTS.filter((x) => themes.has(x)) };
 }
 
 export type Analysis = ReturnType<typeof analyseRecipe>;
