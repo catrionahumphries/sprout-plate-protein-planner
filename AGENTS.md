@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Recipe analysis rules (targets, conversions, fixes) live as pure functions in src/lib/recipe-engine.ts with tests beside it — keeps calculations consistent and testable.
+- Saved recipes store the full analysis JSON in recipes.nutrition so the library shows exactly what was analysed.
