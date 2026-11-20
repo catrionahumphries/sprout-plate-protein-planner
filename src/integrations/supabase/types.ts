@@ -21,6 +21,7 @@ export type Database = {
           carbs_per_100g: number
           cooked_conversion_factor: number
           created_at: string
+          created_by: string | null
           density_g_per_cup: number
           fat_per_100g: number
           fibre_per_100g: number
@@ -35,6 +36,7 @@ export type Database = {
           carbs_per_100g?: number
           cooked_conversion_factor?: number
           created_at?: string
+          created_by?: string | null
           density_g_per_cup?: number
           fat_per_100g?: number
           fibre_per_100g?: number
@@ -49,6 +51,7 @@ export type Database = {
           carbs_per_100g?: number
           cooked_conversion_factor?: number
           created_at?: string
+          created_by?: string | null
           density_g_per_cup?: number
           fat_per_100g?: number
           fibre_per_100g?: number
@@ -72,6 +75,7 @@ export type Database = {
           theme_nights: string[]
           title: string
           total_time_mins: number | null
+          user_id: string | null
         }
         Insert: {
           compliance_status?: string | null
@@ -85,6 +89,7 @@ export type Database = {
           theme_nights?: string[]
           title: string
           total_time_mins?: number | null
+          user_id?: string | null
         }
         Update: {
           compliance_status?: string | null
@@ -98,6 +103,7 @@ export type Database = {
           theme_nights?: string[]
           title?: string
           total_time_mins?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }

@@ -1,0 +1,17 @@
+ALTER TABLE public.recipes ADD COLUMN IF NOT EXISTS user_id uuid DEFAULT auth.uid();
+ALTER TABLE public.ingredients ADD COLUMN IF NOT EXISTS created_by uuid DEFAULT auth.uid();
+DROP POLICY IF EXISTS "open recipes" ON public.recipes;
+DROP POLICY IF EXISTS "open ingredients" ON public.ingredients;
+REVOKE ALL ON public.recipes FROM anon;
+REVOKE ALL ON public.ingredients FROM anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.recipes TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ingredients TO authenticated;
+GRANT ALL ON public.recipes, public.ingredients TO service_role;
+CREATE POLICY "own recipes select" ON public.recipes FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "own recipes insert" ON public.recipes FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "own recipes update" ON public.recipes FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+CREATE POLICY "own recipes delete" ON public.recipes FOR DELETE TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "signed-in read ingredients" ON public.ingredients FOR SELECT TO authenticated USING (auth.uid() IS NOT NULL);
+CREATE POLICY "add own ingredients" ON public.ingredients FOR INSERT TO authenticated WITH CHECK (created_by = auth.uid());
+CREATE POLICY "edit own ingredients" ON public.ingredients FOR UPDATE TO authenticated USING (created_by = auth.uid()) WITH CHECK (created_by = auth.uid());
+CREATE POLICY "delete own ingredients" ON public.ingredients FOR DELETE TO authenticated USING (created_by = auth.uid());

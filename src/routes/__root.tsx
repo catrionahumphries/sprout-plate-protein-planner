@@ -11,6 +11,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
+import { AuthGate } from "@/components/AuthGate";
+import { supabase } from "@/integrations/supabase/client";
 import { Leaf } from "lucide-react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -126,10 +128,11 @@ function RootComponent() {
           <div className="flex gap-1 text-sm">
             <Link to="/" activeOptions={{ exact: true }} className="rounded-full px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-secondary font-semibold" }}>Analyse</Link>
             <Link to="/library" className="rounded-full px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-secondary font-semibold" }}>Library</Link>
+            <button onClick={() => supabase.auth.signOut()} className="rounded-full px-3 py-1.5 text-muted-foreground hover:bg-muted">Sign out</button>
           </div>
         </div>
       </nav>
-      <Outlet />
+      <AuthGate><Outlet /></AuthGate>
       <Toaster />
     </QueryClientProvider>
   );

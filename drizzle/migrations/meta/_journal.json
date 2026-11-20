@@ -15,6 +15,13 @@
       "when": 1795139457154,
       "tag": "0001_add_ingredient_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795139524537,
+      "tag": "0002_secure_recipes_ingredients",
+      "breakpoints": true
     }
   ]
 }
