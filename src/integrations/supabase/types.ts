@@ -26,6 +26,7 @@ export type Database = {
           fibre_per_100g: number
           id: string
           ingredient_name: string
+          notes: string | null
           protein_per_100g: number
         }
         Insert: {
@@ -39,6 +40,7 @@ export type Database = {
           fibre_per_100g?: number
           id?: string
           ingredient_name: string
+          notes?: string | null
           protein_per_100g?: number
         }
         Update: {
@@ -52,6 +54,7 @@ export type Database = {
           fibre_per_100g?: number
           id?: string
           ingredient_name?: string
+          notes?: string | null
           protein_per_100g?: number
         }
         Relationships: []
